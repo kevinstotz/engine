@@ -10,5 +10,4 @@ django-ipware==1.1.6
 django-user-agents==0.3.2
 ua-parser==0.7.3
 user-agents==1.1.0
-python-memcached==0.1.2
 bcrypt==3.1.3
