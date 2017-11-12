@@ -1,0 +1,14 @@
+Django==1.11.6
+Pillow==4.3.0
+django-cors-headers==2.1.0
+djangorestframework==3.7.0
+django-debug-toolbar==1.8
+django-filter==1.0.4
+djangorestframework-jsonapi==2.2.0
+djangorestframework-jwt==1.11.0
+django-ipware==1.1.6
+django-user-agents==0.3.2
+ua-parser==0.7.3
+user-agents==1.1.0
+python-memcached==0.1.2
+bcrypt==3.1.3
