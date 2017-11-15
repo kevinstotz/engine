@@ -1,4 +1,5 @@
 from rest_framework import generics, status
+import json
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.parsers import JSONParser
@@ -58,6 +59,7 @@ class UserLoginStatus(generics.ListAPIView):
             logger.debug(result)
             return Response(ReturnResponse.Response(0, __name__, 'success', result).return_json(), status=status.HTTP_200_OK)
 
+
 class ReadTemperature(generics.CreateAPIView):
     model = CustomUser
     permission_classes = (AllowAny,)
@@ -65,12 +67,31 @@ class ReadTemperature(generics.CreateAPIView):
     authentication_classes = (JSONWebTokenAuthentication,)
     parser_classes = (JSONParser,)
 
-    def get(self, request, *args, **kwargs):
-            apiKey = kwargs.get('ApiKey', 0)
-            temperature = kwargs.get('Temperature', 0)
-            print(apiKey)
-            print(temperature)
+    def post(self, request, *args, **kwargs):
+        apiKey = kwargs.get('ApiKey', 0)
+        tempHumidity = 0
+        data = ""
+
+        try:
+            print(request.body.decode("utf-8"))
+            tempHumidity = json.loads(request.body.decode("utf-8"))
+            result = 'Parsed JSON:{0}'.format(tempHumidity)
+            logger.debug(result)
+        except:
+            result = 'Failed to parse JSON:{0}'.format(request.body.decode("utf-8"))
+            logger.error(result)
+            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(), status=status.HTTP_200_OK)
+        try:
+            print('API Key=' + apiKey)
+            print('temp=' + tempHumidity['temperature'])
+            print('humidity=' + tempHumidity['humidity'])
             return Response(ReturnResponse.Response(0, __name__, 'success', "done").return_json(), status=status.HTTP_200_OK)
+        except:
+            result = 'failed reading data'
+            logger.error(result)
+            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(), status=status.HTTP_200_OK)
+
+
 
 class RegisterUser(generics.CreateAPIView):
     model = Register
@@ -267,7 +288,7 @@ class Login(generics.CreateAPIView):
             logger.debug(result)
         except ObjectDoesNotExist:
             email_address_status = EmailAddressStatus.objects.get(pk=EMAIL_ADDRESS_STATUS['NOTFOUND'])
-            result = 'Email Address not Found:' + email_address_status.Status
+            result = email_address_status.Status
             logger.error(result)
             return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json())
 

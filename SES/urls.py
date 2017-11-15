@@ -32,6 +32,6 @@ urlpatterns = [
     url(r'^SES/v1/auth/register/', RegisterUser.as_view(), name="registerUser"),
     url(r'^SES/v1/auth/forgotPassword/', ForgotPassword.as_view(), name="forgotPassword"),
     url(r'^SES/v1/auth/resetPassword/(?P<Authorization_Code>([a-z]+))$', ResetPassword.as_view(), name="resetPassword"),
-    url(r'^SES/v1/key/(?P<ApiKey>([0-9]+))/temperature/(?P<Temperature>([0-9]+.[0-9]+))/$', ReadTemperature.as_view(), name="readTemperature"),
+    url(r'^SES/v1/key/(?P<ApiKey>([0-9]+))/$', ReadTemperature.as_view(), name="readTemperature"),
     url(r'^SES/v1/user/(?P<User_Id>([0-9]+))$', UserInfo.as_view(), name="userInfo"),
 ]
