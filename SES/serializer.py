@@ -1,4 +1,4 @@
-from SES.models import Register, RegisterStatus
+from SES.models import Register, RegisterStatus, Humidity, Temperature
 from rest_framework.serializers import ModelSerializer
 from rest_framework import serializers
 from SES.settings.base import \
@@ -7,8 +7,23 @@ from SES.settings.base import \
     FIRST_NAME_LENGTH, \
     EMAIL_LENGTH
 
-#  IntegerField, ReadOnlyField, SerializerMethodField, PrimaryKeyRelatedField
-#  from django.contrib.auth.models import User
+
+class TemperatureSerializer(ModelSerializer):
+    Temperature = serializers.DecimalField(max_digits=10, decimal_places=4)
+    Sent = serializers.DateTimeField( )
+
+    class Meta:
+        model = Temperature
+        fields = ('Id', 'Sent')
+
+
+class HumiditySerializer(ModelSerializer):
+    Humidity = serializers.DecimalField(max_digits=10, decimal_places=4)
+    Sent = serializers.DateTimeField()
+
+    class Meta:
+        model = Humidity
+        fields = ('Id', 'Sent')
 
 
 class RegisterStatusSerializer(ModelSerializer):

@@ -3,10 +3,10 @@ import json
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.parsers import JSONParser
-from SES.serializer import RegisterSerializer, RegisterStatusSerializer
+from SES.serializer import RegisterSerializer, RegisterStatusSerializer, HumiditySerializer, TemperatureSerializer
 import logging
 from SES.models import CustomUser, Register, RegisterStatus, UserStatus, PasswordStatus, \
-    EmailAddress, EmailAddressStatus, NameType, Name, PasswordReset, PasswordResetStatus, UserLogin
+    EmailAddress, EmailAddressStatus, NameType, Name, PasswordReset, PasswordResetStatus, UserLogin, Temperature, Humidity
 from rest_framework.authentication import BasicAuthentication
 from ipware.ip import get_ip
 from SES.settings.base import REGISTER_STATUS, AUTHORIZATION_CODE_LENGTH, PASSWORD_STATUS, \
@@ -57,20 +57,20 @@ class UserLoginStatus(generics.ListAPIView):
             user = CustomUser.objects.get(pk=user_id)
             result = "email:{0}".format(user.Email)
             logger.debug(result)
-            return Response(ReturnResponse.Response(0, __name__, 'success', result).return_json(), status=status.HTTP_200_OK)
+            return Response(ReturnResponse.Response(0, __name__, 'success', result).return_json(),
+                            status=status.HTTP_200_OK)
 
 
 class ReadTemperature(generics.CreateAPIView):
-    model = CustomUser
+    model = Temperature
     permission_classes = (AllowAny,)
-    serializer_class = RegisterSerializer
+    serializer_class = TemperatureSerializer
     authentication_classes = (JSONWebTokenAuthentication,)
     parser_classes = (JSONParser,)
 
     def post(self, request, *args, **kwargs):
         apiKey = kwargs.get('ApiKey', 0)
-        tempHumidity = 0
-        data = ""
+        tempHumidity = ""
 
         try:
             print(request.body.decode("utf-8"))
@@ -80,17 +80,32 @@ class ReadTemperature(generics.CreateAPIView):
         except:
             result = 'Failed to parse JSON:{0}'.format(request.body.decode("utf-8"))
             logger.error(result)
-            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(), status=status.HTTP_200_OK)
+            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(),
+                            status=status.HTTP_200_OK)
+
         try:
             print('API Key=' + apiKey)
-            print('temp=' + tempHumidity['temperature'])
-            print('humidity=' + tempHumidity['humidity'])
-            return Response(ReturnResponse.Response(0, __name__, 'success', "done").return_json(), status=status.HTTP_200_OK)
+            print('Temperature=' + tempHumidity['Temperature'])
+            print('Humidity=' + tempHumidity['Humidity'])
+            print('Time=' + tempHumidity['Time'])
+
         except:
             result = 'failed reading data'
             logger.error(result)
-            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(), status=status.HTTP_200_OK)
+            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(),
+                            status=status.HTTP_200_OK)
 
+        serializer = TemperatureSerializer(data=tempHumidity)
+        if serializer.is_valid():
+            temperature = Temperature()
+            temperature.Temperature = serializer.Temperature
+            temperature.Sent = serializer.Sent
+            temperature.save()
+            return Response(ReturnResponse.Response(0, __name__, 'success', "done").return_json(),
+                            status=status.HTTP_200_OK)
+        else:
+            return Response(ReturnResponse.Response(1, __name__, 'failed saving temperature', result).return_json(),
+                            status=status.HTTP_200_OK)
 
 
 class RegisterUser(generics.CreateAPIView):
@@ -148,11 +163,13 @@ class RegisterUser(generics.CreateAPIView):
             status_serializer = RegisterStatusSerializer(new_register_status)
             result = status_serializer.data
             logger.debug(result)
-            return Response(ReturnResponse.Response(1, __name__, 'success', result).return_json(),  status=status.HTTP_201_CREATED)
+            return Response(ReturnResponse.Response(1, __name__, 'success', result).return_json(),
+                            status=status.HTTP_201_CREATED)
         else:
             result = serializer.errors
             logger.error(result)
-            return Response(ReturnResponse.Response(1, __name__, 'success', result).return_json(),  status=status.HTTP_400_BAD_REQUEST)
+            return Response(ReturnResponse.Response(1, __name__, 'success', result).return_json(),
+                            status=status.HTTP_400_BAD_REQUEST)
 
 
 class ForgotPassword(generics.CreateAPIView):
@@ -230,7 +247,8 @@ class ResetPassword(generics.ListAPIView):
         my_email = MyEmail('Send New Password')
         result = my_email.send_reset_password_email(authorization_code)
 
-        return Response(ReturnResponse.Response(0, __name__, 'success', result).return_json(), status=status.HTTP_200_OK)
+        return Response(ReturnResponse.Response(0, __name__, 'success', result).return_json(),
+                        status=status.HTTP_200_OK)
 
 
 class LogoutUser(generics.ListAPIView):
@@ -284,7 +302,7 @@ class Login(generics.CreateAPIView):
 
         try:
             user = CustomUser.objects.get(Email=email)
-            result = 'Retrieved user address:{0} and userId:{1}'.format(user.Email,user.Id)
+            result = 'Retrieved user address:{0} and userId:{1}'.format(user.Email, user.Id)
             logger.debug(result)
         except ObjectDoesNotExist:
             email_address_status = EmailAddressStatus.objects.get(pk=EMAIL_ADDRESS_STATUS['NOTFOUND'])
@@ -304,7 +322,8 @@ class Login(generics.CreateAPIView):
             result = jwt_encode_handler(payload)
             logger.debug(result)
             user.is_logged_in = True
-            return Response(ReturnResponse.Response(0, __name__, 'success', result).return_json(), status=status.HTTP_200_OK)
+            return Response(ReturnResponse.Response(0, __name__, 'success', result).return_json(),
+                            status=status.HTTP_200_OK)
         else:
             password_status = PasswordStatus.objects.get(pk=PASSWORD_STATUS['FAILED'])
             result = 'Wrong Password:' + password_status.Status
@@ -332,27 +351,32 @@ class VerifyRegister(generics.ListAPIView):
             register_status = RegisterStatus.objects.get(pk=REGISTER_STATUS['INVALID'])
             result = 'Invalid Register Code:{0} :{1}'.format(register_status.Status, authorization_code)
             logger.error(result)
-            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(), status=status.HTTP_200_OK)
+            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(),
+                            status=status.HTTP_200_OK)
 
         if verify_register.Status_Id.pk == REGISTER_STATUS['EXPIRED']:
             result = 'Expired Register Code:{0} :{1}'.format(verify_register.Status, authorization_code)
             logger.error(result)
-            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(), status=status.HTTP_200_OK)
+            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(),
+                            status=status.HTTP_200_OK)
 
         if verify_register.Status_Id.pk == REGISTER_STATUS['VERIFIED']:
             result = 'Already Verified Register Code:{0} :{1}'.format(verify_register.Status, authorization_code)
             logger.error(result)
-            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(), status=status.HTTP_200_OK)
+            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(),
+                            status=status.HTTP_200_OK)
 
         if verify_register.Status_Id.pk == REGISTER_STATUS['NEW']:
             result = 'New Register Code:{0} :{1}'.format(verify_register.Status, authorization_code)
             logger.error(result)
-            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(), status=status.HTTP_200_OK)
+            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(),
+                            status=status.HTTP_200_OK)
 
         if verify_register.Status_Id.pk != REGISTER_STATUS['SENT']:
             result = 'Register Code Already Sent:{0} :{1}'.format(verify_register.Status, authorization_code)
             logger.error(result)
-            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(), status=status.HTTP_200_OK)
+            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(),
+                            status=status.HTTP_200_OK)
 
         if (pytz.utc.localize(datetime.utcnow()) - verify_register.Inserted) > timedelta(1):
             register_status = RegisterStatus.objects.get(pk=REGISTER_STATUS['EXPIRED'])
@@ -360,21 +384,24 @@ class VerifyRegister(generics.ListAPIView):
             verify_register.save()
             result = 'Register Code Expired:{0} :{1}'.format(verify_register.Status, authorization_code)
             logger.error(result)
-            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(), status=status.HTTP_200_OK)
+            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(),
+                            status=status.HTTP_200_OK)
 
         new_user = CustomUser(Status_Id=UserStatus.objects.get(pk=USER_STATUS['ACTIVE']))
         user_util = Util()
         if user_util.find_username(verify_register.First_Name + verify_register.Last_Name) != 0:
             result = 'Failed creating username: already exists'
             logger.error(result)
-            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(), status=status.HTTP_200_OK)
+            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(),
+                            status=status.HTTP_200_OK)
 
         email_util = EmailUtil()
         if email_util.find_email(verify_register.Email) != 0:
             email_status = EmailAddressStatus.objects.get(pk=EMAIL_ADDRESS_STATUS['EXISTS'])
             result = 'Email Already exists:{0}: {1}:'.format(email_status.Status, verify_register.Email)
             logger.error(result)
-            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(), status=status.HTTP_200_OK)
+            return Response(ReturnResponse.Response(1, __name__, 'failed', result).return_json(),
+                            status=status.HTTP_200_OK)
 
         new_user.Email = verify_register.Email
         new_user.Username = user_util.new_username
@@ -387,12 +414,12 @@ class VerifyRegister(generics.ListAPIView):
                              Status_Id=EmailAddressStatus(pk=EMAIL_ADDRESS_STATUS['ACTIVE']))
 
         first_name = Name(Name=verify_register.First_Name,
-                    Type_Id=NameType.objects.get(pk=NAME_TYPE['FIRST']),
-                    User_Id=new_user)
+                          Type_Id=NameType.objects.get(pk=NAME_TYPE['FIRST']),
+                          User_Id=new_user)
 
         last_name = Name(Name=verify_register.Last_Name,
-                    Type_Id=NameType.objects.get(pk=NAME_TYPE['LAST']),
-                    User_Id=new_user)
+                         Type_Id=NameType.objects.get(pk=NAME_TYPE['LAST']),
+                         User_Id=new_user)
 
         email.save()
         first_name.save()
@@ -406,7 +433,8 @@ class VerifyRegister(generics.ListAPIView):
 
         result = 'New User Added:{0}:'.format(new_user.pk)
         logger.info(result)
-        return Response(ReturnResponse.Response(1, __name__, 'success', result).return_json(), status=status.HTTP_200_OK)
+        return Response(ReturnResponse.Response(1, __name__, 'success', result).return_json(),
+                        status=status.HTTP_200_OK)
 
     def generate_password(self):
         letters = string.ascii_lowercase

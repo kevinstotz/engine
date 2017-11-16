@@ -10,6 +10,7 @@ from SES.settings.base import \
 #    AUTH_USER_MODEL, \
 from .managers import UserManager
 
+
 class UserStatus(models.Model):
     Id = models.AutoField(primary_key=True)
     Status = models.CharField(max_length=50, verbose_name="Status of User")
@@ -29,11 +30,11 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
                               verbose_name="Login email of user",
                               unique=True)
     Username = models.CharField(max_length=50, verbose_name="User name")
-    Status_Id = models.ForeignKey(UserStatus, on_delete=models.SET_DEFAULT, default=0)
+    Status_Id = models.ForeignKey(UserStatus, on_delete=models.SET_DEFAULT, default=1)
     Inserted = models.DateTimeField(auto_now_add=True, verbose_name="Time inserted")
     is_active = models.BooleanField(default=True)
     is_logged_in = models.BooleanField(default=False)
-    is_staff = models.BooleanField( default=True)
+    is_staff = models.BooleanField(default=True)
     Avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
 
     objects = UserManager()
@@ -54,6 +55,55 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     def get_short_name(self):
         return "first"
 
+
+class Temperature(models.Model):
+    Id = models.AutoField(primary_key=True)
+    Temperature = models.DecimalField(max_digits=10, decimal_places=4)
+    Sent = models.DateTimeField(auto_now=False, auto_now_add=False, verbose_name="Time inserted")
+    Inserted = models.DateTimeField(auto_now_add=True, verbose_name="Time inserted")
+
+    def __str__(self):
+        return '%s' % "Temperature Table"
+
+    class Meta:
+        ordering = ('Id',)
+
+    @property
+    def farenheit(self):
+        return self.Temperature.to_float()
+
+    @property
+    def celcius(self):
+        return (self.Temperature.to_float() - 32.0) / 1.8
+
+    @property
+    def kelvin(self):
+        return (self.Temperature.to_float() + 459.67) * 5.0 / 9.0
+
+    @property
+    def water_vapor_saturation(self):
+        v = 1 - (self.kelvin / 647.096)
+        return (self.kelvin / 647.096) * \
+               (-7.85951783 * pow(v, 1) +
+                1.84408259 * pow(v, 1.5) +
+                -11.7866497 * pow(v, 3) +
+                22.6807411 * pow(v, 3.5) +
+                -15.9618719 * pow(v, 4) +
+                1.80122502 * pow(v, 7.5)
+                )
+
+
+class Humidity(models.Model):
+    Id = models.AutoField(primary_key=True)
+    Humidity = models.DecimalField(max_digits=10, decimal_places=4)
+    Sent = models.DateTimeField(auto_now=False, auto_now_add=False, verbose_name="Time inserted")
+    Inserted = models.DateTimeField(auto_now_add=True, verbose_name="Time inserted")
+
+    def __str__(self):
+        return '%s' % "Humidity Table"
+
+    class Meta:
+        ordering = ('Id',)
 
 
 class RegisterStatus(models.Model):
@@ -140,8 +190,6 @@ class PasswordResetStatus(models.Model):
         ordering = ('Id',)
 
 
-
-
 class NameType(models.Model):
     Id = models.AutoField(primary_key=True)
     Type = models.CharField(max_length=FIRST_NAME_LENGTH, verbose_name="Type of Name")
@@ -180,7 +228,7 @@ class Register(models.Model):
                                           blank=False,
                                           verbose_name="Auto Generated Auth Code")
     Inserted = models.DateTimeField(auto_now_add=True, verbose_name="Time inserted")
-    Status_Id = models.ForeignKey(RegisterStatus, on_delete=models.SET_DEFAULT, default=0)
+    Status_Id = models.ForeignKey(RegisterStatus, on_delete=models.SET_DEFAULT, default=1)
     objects = models.Manager()
 
     def __str__(self):
@@ -223,10 +271,10 @@ class EmailTemplate(models.Model):
 
 class Notification(models.Model):
     Id = models.AutoField(primary_key=True)
-    Type_Id = models.ForeignKey(NotificationType, on_delete=models.SET_DEFAULT, default=0)
+    Type_Id = models.ForeignKey(NotificationType, on_delete=models.SET_DEFAULT, default=1)
     From_Id = models.IntegerField(default=0)
     To_Id = models.IntegerField(default=0)
-    Status_Id = models.ForeignKey(NotificationStatus, on_delete=models.SET_DEFAULT, default=0)
+    Status_Id = models.ForeignKey(NotificationStatus, on_delete=models.SET_DEFAULT, default=1)
     Message_Id = models.IntegerField(default=0)
     objects = models.Manager()
 
@@ -239,9 +287,9 @@ class Notification(models.Model):
 
 class UserLogin(models.Model):
     Id = models.AutoField(primary_key=True)
-    User_Id = models.ForeignKey(CustomUser, on_delete=models.PROTECT, verbose_name="Login")
+    User_Id = models.ForeignKey(CustomUser, default=1, on_delete=models.PROTECT, verbose_name="Login")
     Inserted = models.DateTimeField(auto_now_add=True, verbose_name="Time inserted")
-    Status_Id = models.ForeignKey(LoginStatus, on_delete=models.SET_DEFAULT, default=0)
+    Status_Id = models.ForeignKey(LoginStatus, on_delete=models.SET_DEFAULT, default=1)
     Attempts = models.IntegerField(default=0, blank=False, null=False)
     Updated = models.DateTimeField(auto_now_add=True, verbose_name="Time updated")
     IP_Address = models.GenericIPAddressField(blank=True, null=True, verbose_name="IP Address of Login")
@@ -256,11 +304,11 @@ class UserLogin(models.Model):
 
 class PasswordReset(models.Model):
     Id = models.AutoField(primary_key=True)
-    User_Id = models.ForeignKey(CustomUser, on_delete=models.CASCADE, default=0)
+    User_Id = models.ForeignKey(CustomUser, default=1, on_delete=models.CASCADE)
     Authorization_Code = models.CharField(max_length=AUTHORIZATION_CODE_LENGTH,
                                           blank=False,
                                           verbose_name="Password Reset Code")
-    Status_Id = models.ForeignKey(PasswordResetStatus, on_delete=models.SET_DEFAULT, default=0)
+    Status_Id = models.ForeignKey(PasswordResetStatus, on_delete=models.SET_DEFAULT, default=1)
     Clicked = models.DateTimeField(auto_now=True, verbose_name="Time clicked")
     Inserted = models.DateTimeField(auto_now_add=True, verbose_name="Time inserted")
     objects = models.Manager()
@@ -275,9 +323,9 @@ class PasswordReset(models.Model):
 class Name(models.Model):
     Id = models.AutoField(primary_key=True)
     Name = models.CharField(max_length=FIRST_NAME_LENGTH, verbose_name="Name of User")
-    User_Id = models.ForeignKey(CustomUser, on_delete=models.PROTECT, verbose_name="Login")
+    User_Id = models.ForeignKey(CustomUser, default=1, on_delete=models.PROTECT, verbose_name="Login")
     Inserted = models.DateTimeField(auto_now_add=True, verbose_name="Time inserted")
-    Type_Id = models.ForeignKey(NameType, on_delete=models.SET_DEFAULT, default=0)
+    Type_Id = models.ForeignKey(NameType, on_delete=models.SET_DEFAULT, default=1)
     objects = models.Manager()
 
     def __str__(self):
@@ -293,9 +341,9 @@ class EmailAddress(models.Model):
                               blank=False,
                               default='noemail@noemail.com',
                               verbose_name="Email of Register")
-    User_Id = models.ForeignKey(CustomUser, on_delete=models.PROTECT, verbose_name="Login")
+    User_Id = models.ForeignKey(CustomUser, default=1, on_delete=models.PROTECT, verbose_name="Login")
     Inserted = models.DateTimeField(auto_now_add=True, verbose_name="Time inserted")
-    Status_Id = models.ForeignKey(EmailAddressStatus, on_delete=models.SET_DEFAULT, default=0)
+    Status_Id = models.ForeignKey(EmailAddressStatus, on_delete=models.SET_DEFAULT, default=1)
     objects = models.Manager()
 
     def __str__(self):
